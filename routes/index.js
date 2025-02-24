@@ -1,9 +1,11 @@
 const router = require('express').Router();
 const passport = require('passport');
 const bcrypt = require('bcryptjs');
-const { pool } = require('../db/pool');
+const { body, validationResult } = require('express-validator');
 const { isAuth, isAdmin } = require('./authMiddleware');
+const query = require('../db/query');
 
+const { password } = require('pg/lib/defaults');
 /**
  * -------------- POST ROUTES ----------------
  */
@@ -13,60 +15,72 @@ router.post(
   passport.authenticate('local', {
     failureRedirect: '/login-failure',
     successRedirect: '/login-success',
-  }),
-  (req, res, next) => {}
+  })
 );
 
-router.post('/register', async (req, res, next) => {
-  // hash password
-  console.log('req body:', req.body);
-  const hashedPassword = await bcrypt.hash(req.body.password, 10);
-  // store the user
-  await pool.query(
-    'insert into users (username,password,isAdmin) values($1, $2, $3)',
-    [req.body.username, hashedPassword, req.body.isAdmin]
-  );
-  res.redirect('/');
-});
+router.post(
+  '/sign-up',
+  body('username').custom(async (value) => {
+    const rows = await query.getUserByUsername(value);
+    console.log(rows.length);
+    if (rows.length > 0) {
+      throw new Error('E-mail already in use');
+    }
+  }),
+
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const {
+        firstName,
+        lastName,
+        username,
+        password,
+        confirmedPassword,
+        isAdmin,
+      } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const membership_code = isAdmin ? 2 : 1;
+
+      if (!(confirmedPassword === password)) {
+        return res.status(400).json({ error: 'Passwords do not match' });
+      }
+
+      await query.insertUser(
+        firstName,
+        lastName,
+        username,
+        hashedPassword,
+        membership_code
+      );
+      res.redirect('/');
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
 
 /**
  * -------------- GET ROUTES ----------------
  */
 
 router.get('/', (req, res, next) => {
-  res.send('<h1>Home</h1><p>Please <a href="/register">register</a></p>');
+  res.render('index');
 });
 
 // When you visit http://localhost:3000/login, you will see "Login Page"
 router.get('/login', (req, res, next) => {
-  const form =
-    '<h1>Login Page</h1><form method="POST" action="/login">\
-    Enter Username:<br><input type="text" name="username">\
-    <br>Enter Password:<br><input type="password" name="password">\
-    <br><br><input type="submit" value="Submit"></form>';
-
-  res.send(form);
+  res.render('login-page');
 });
 
 // When you visit http://localhost:3000/register, you will see "Register Page"
-router.get('/register', (req, res, next) => {
-  const form = `
-    <h1>Register Page</h1>
-    <form method="post" action="register">
-        <label for="username">Enter Username:</label><br>
-        <input type="text" id="username" name="username" required>
-        <br>
-        <label for="password">Enter Password:</label><br>
-        <input type="password" id="password" name="password" required>
-        <br>
-        <label for="isAdmin">Is Admin:</label>
-        <input type="checkbox" id="isAdmin" name="isAdmin">
-        <br><br>
-        <input type="submit" value="Submit">
-    </form>
-`;
-
-  res.send(form);
+router.get('/sign-up', (req, res, next) => {
+  res.render('sign-up-page');
 });
 
 /**
@@ -91,12 +105,16 @@ router.get('/logout', (req, res, next) => {
 
 router.get('/login-success', (req, res, next) => {
   res.send(
-    '<p>You successfully logged in. --> <a href="/protected-route">Go to protected route</a></p>'
+    '<p>You successfully logged in. -->   <a href="/protected-route">create messages </a></p>'
   );
 });
-
+router.get('/create-message', (req, res, next) => {
+  res.send(
+    '<p>You successfully logged in. -->   <a href="/protected-route">create messages </a></p>'
+  );
+});
 router.get('/login-failure', (req, res, next) => {
-  res.send('You entered the wrong password.');
+  res.send('You entered the wrong username or password.');
 });
 
 module.exports = router;

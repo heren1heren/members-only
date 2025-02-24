@@ -1,0 +1,34 @@
+<h1>Sign Up Form</h1>
+<form method="post" action="sign-up">
+  <label for="last-name">First name:</label><br />
+  <input type="text" id="last-name" name="lastName" required />
+  <br />
+  <label for="first-name">Last name:</label><br />
+  <input type="text" id="first-name" name="firstName" required />
+  <br />
+  <label for="username">UserName As Email:</label><br />
+  <input
+    type="text"
+    id="username"
+    name="username"
+    required
+    placeholder="randorm@gmail.com"
+  />
+  <br />
+  <label for="password">Password:</label><br />
+  <input type="password" id="password" name="password" required />
+  <br />
+  <label for="confirmed-password">Confirmed Password:</label><br />
+  <input
+    type="password"
+    id="confirmed-password"
+    name="confirmedPassword"
+    required
+  />
+  <br />
+  <label for="isAdmin">Is Admin:</label>
+  <input type="checkbox" id="isAdmin" name="isAdmin" />
+  <br /><br />
+  <input type="submit" value="Submit" />
+</form>
+<p>Go <a href="/">Home</a></p>
